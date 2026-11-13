@@ -7,6 +7,11 @@ backend/node_modules/
 .env
 .env.*
 !.env.example
+!.env.examples
+
+# Uploads & Temp files
+uploads/
+backend/uploads/
 
 # Build
 frontend/build/

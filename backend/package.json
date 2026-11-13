@@ -4,26 +4,32 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "create-admin": "node scripts/createAdmin.js",
+    "seed": "node scripts/seedData.js",
+    "test": "node tests/api.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1168.0",
+    "@elastic/elasticsearch": "^9.5.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
+    "dns2": "^3.1.1",
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.11.4"
+    "mongoose": "^9.11.4",
+    "multer": "^2.5.0",
+    "pdfkit": "^0.20.2",
+    "razorpay": "^2.9.8"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
-  },
-  "scripts": {
-  "start": "node server.js",
-  "dev": "nodemon server.js"
-}
-
+  }
 }
