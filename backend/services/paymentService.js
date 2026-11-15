@@ -126,9 +126,27 @@ const verifyRazorpayPayment = (razorpayOrderId, razorpayPaymentId, razorpaySigna
   }
 };
 
+/**
+ * Verify Razorpay Webhook signature
+ */
+const verifyRazorpayWebhook = (rawBody, signature, secret) => {
+  const webhookSecret = secret || process.env.RAZORPAY_WEBHOOK_SECRET || "vendora_webhook_secret_test";
+  if (!signature) return false;
+  try {
+    const expected = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody))
+      .digest("hex");
+    return expected === signature;
+  } catch (e) {
+    return false;
+  }
+};
+
 module.exports = {
   calculateSplitCommissions,
   createRazorpayOrder,
   verifyRazorpayPayment,
+  verifyRazorpayWebhook,
   razorpayKeyId
 };

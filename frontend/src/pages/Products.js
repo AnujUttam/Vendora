@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import API from "../services/api";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import {
   Search,
   SlidersHorizontal,
@@ -9,7 +10,8 @@ import {
   ShoppingCart,
   Check,
   RefreshCw,
-  Store
+  Store,
+  Heart
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -39,6 +41,15 @@ function Products() {
   const [addedId, setAddedId] = useState(null);
 
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+
+  const handleWishlistToggle = async (product) => {
+    try {
+      await toggleWishlist(product);
+    } catch (err) {
+      alert(err.message || "Please log in to manage your wishlist");
+    }
+  };
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -233,6 +244,18 @@ function Products() {
                     >
                       {product.category}
                     </span>
+                    <button
+                      className="btn btn-sm position-absolute top-0 end-0 m-2 rounded-circle shadow-xs bg-white"
+                      style={{ zIndex: 2, width: "32px", height: "32px", padding: 0 }}
+                      onClick={() => handleWishlistToggle(product)}
+                      title={isInWishlist(product._id) ? "Remove from wishlist" : "Add to wishlist"}
+                    >
+                      <Heart
+                        size={15}
+                        className={isInWishlist(product._id) ? "text-danger" : "text-muted"}
+                        style={{ fill: isInWishlist(product._id) ? "#dc3545" : "none" }}
+                      />
+                    </button>
                   </div>
 
                   <div className="card-body p-3 d-flex flex-column">

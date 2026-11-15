@@ -1,4 +1,3 @@
-
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
@@ -20,10 +19,8 @@ const protect = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const secret = process.env.JWT_SECRET || "vendora_default_jwt_secret_key_2026";
+    const decoded = jwt.verify(token, secret);
 
     const user = await User.findById(decoded.id);
 
@@ -35,9 +32,7 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
-
     next();
-
   } catch (error) {
     return res.status(401).json({
       success: false,

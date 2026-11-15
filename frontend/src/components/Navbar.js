@@ -8,14 +8,18 @@ import {
   LogOut,
   ShieldAlert,
   Package,
-  Layers
+  Layers,
+  Heart,
+  Grid
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 
 function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const { cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
@@ -57,15 +61,30 @@ function Navbar() {
 
           <div className="navbar-actions">
             <Link to="/products" className="nav-action-link">
-              <Store size={19} />
-              <span>Explore</span>
+              <Store size={18} />
+              <span>Catalog</span>
+            </Link>
+
+            <Link to="/categories" className="nav-action-link">
+              <Grid size={18} />
+              <span>Categories</span>
+            </Link>
+
+            <Link to="/wishlist" className="nav-action-link position-relative">
+              <Heart size={18} />
+              <span>Wishlist</span>
+              {wishlistCount > 0 && (
+                <span className="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">
+                  {wishlistCount}
+                </span>
+              )}
             </Link>
 
             <Link to="/cart" className="nav-action-link position-relative">
-              <ShoppingCart size={19} />
+              <ShoppingCart size={18} />
               <span>Cart</span>
               {cartCount > 0 && (
-                <span className="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">
+                <span className="badge rounded-pill bg-primary position-absolute top-0 start-100 translate-middle text-white">
                   {cartCount}
                 </span>
               )}
@@ -117,8 +136,20 @@ function Navbar() {
                   )}
 
                   <li>
+                    <Link className="dropdown-item d-flex align-items-center gap-2" to="/profile">
+                      <UserRound size={16} /> My Profile & Addresses
+                    </Link>
+                  </li>
+
+                  <li>
                     <Link className="dropdown-item d-flex align-items-center gap-2" to="/my-orders">
                       <Package size={16} /> My Orders
+                    </Link>
+                  </li>
+
+                  <li>
+                    <Link className="dropdown-item d-flex align-items-center gap-2" to="/wishlist">
+                      <Heart size={16} /> My Wishlist
                     </Link>
                   </li>
 

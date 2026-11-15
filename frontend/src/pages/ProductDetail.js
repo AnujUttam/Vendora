@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import API from "../services/api";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useWishlist } from "../context/WishlistContext";
 import {
   Star,
   ShoppingCart,
@@ -12,7 +13,8 @@ import {
   Truck,
   RotateCcw,
   MessageSquare,
-  Send
+  Send,
+  Heart
 } from "lucide-react";
 
 function ProductDetail() {
@@ -33,6 +35,7 @@ function ProductDetail() {
 
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
   const fetchProductAndReviews = useCallback(async () => {
     try {
@@ -243,25 +246,53 @@ function ProductDetail() {
                     </>
                   )}
                 </button>
+
+                <button
+                  className="btn btn-outline-danger py-2 px-3 rounded-pill d-flex align-items-center justify-content-center gap-1"
+                  onClick={async () => {
+                    try {
+                      await toggleWishlist(product);
+                    } catch (err) {
+                      alert(err.message || "Please login to add to wishlist");
+                    }
+                  }}
+                  title={isInWishlist(product._id) ? "In your Wishlist" : "Save to Wishlist"}
+                >
+                  <Heart
+                    size={18}
+                    className={isInWishlist(product._id) ? "text-danger" : ""}
+                    style={{ fill: isInWishlist(product._id) ? "#dc3545" : "none" }}
+                  />
+                </button>
               </div>
             )}
           </div>
 
           {/* Vendor Badge */}
           <div className="card border-0 shadow-sm rounded-4 p-3 mb-4">
-            <div className="d-flex align-items-center gap-3">
-              <div className="rounded-circle bg-primary-subtle text-primary p-3">
-                <Store size={24} />
-              </div>
-              <div>
-                <div className="small text-muted">Sold & Fulfilled by:</div>
-                <h6 className="fw-bold mb-0">
-                  {product.vendorId?.storeName || "Vendora Verified Merchant"}
-                </h6>
-                <div className="small text-muted">
-                  {product.vendorId?.description || "Top rated independent seller"}
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center gap-3">
+                <div className="rounded-circle bg-primary-subtle text-primary p-3">
+                  <Store size={24} />
+                </div>
+                <div>
+                  <div className="small text-muted">Sold & Fulfilled by:</div>
+                  <h6 className="fw-bold mb-0">
+                    {product.vendorId?.storeName || "Vendora Verified Merchant"}
+                  </h6>
+                  <div className="small text-muted">
+                    {product.vendorId?.description || "Top rated independent seller"}
+                  </div>
                 </div>
               </div>
+              {product.vendorId?._id && (
+                <Link
+                  to={`/store/${product.vendorId._id}`}
+                  className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                >
+                  Visit Store
+                </Link>
+              )}
             </div>
           </div>
 

@@ -6,6 +6,7 @@ const {
   verifyPayment,
   getMyOrders,
   getOrderById,
+  cancelOrder,
   downloadInvoice,
   getVendorOrders,
   updateOrderStatus
@@ -19,6 +20,7 @@ router.post("/verify-payment", protect, verifyPayment);
 router.get("/my-orders", protect, getMyOrders);
 router.get("/:id", protect, getOrderById);
 router.get("/:id/invoice", protect, downloadInvoice);
+router.put("/:id/cancel", protect, cancelOrder);
 
 // Vendor order management routes
 router.get("/vendor/orders", protect, approvedVendor, getVendorOrders);

@@ -19,8 +19,8 @@ const upload = multer({
   }
 });
 
-// Single image upload
-router.post("/", protect, approvedVendor, upload.single("image"), async (req, res) => {
+// Single image upload (Product / Store Logo / Banner)
+router.post("/", protect, upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No image file provided" });
@@ -37,6 +37,28 @@ router.post("/", protect, approvedVendor, upload.single("image"), async (req, re
   } catch (error) {
     console.error("Image Upload Error:", error.message);
     res.status(500).json({ success: false, message: "Image upload failed" });
+  }
+});
+
+// Multiple image upload (Product Gallery)
+router.post("/multiple", protect, approvedVendor, upload.array("images", 5), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: "No image files provided" });
+    }
+
+    const uploadPromises = req.files.map((file) => uploadToS3(file));
+    const results = await Promise.all(uploadPromises);
+
+    res.status(200).json({
+      success: true,
+      message: `${results.length} images uploaded successfully`,
+      urls: results.map((r) => r.url),
+      providers: results.map((r) => r.provider)
+    });
+  } catch (error) {
+    console.error("Multiple Image Upload Error:", error.message);
+    res.status(500).json({ success: false, message: "Multiple image upload failed" });
   }
 });
 

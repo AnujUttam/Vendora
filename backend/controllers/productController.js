@@ -45,7 +45,8 @@ const createProduct = async (req, res) => {
       brand,
       price,
       stock,
-      images
+      images,
+      sku
     } = req.body;
 
     if (
@@ -102,6 +103,7 @@ const createProduct = async (req, res) => {
       brand: brand ? brand.trim() : "Unbranded",
       price: productPrice,
       stock: productStock,
+      sku: sku ? sku.trim() : `SKU-${Date.now().toString(36).toUpperCase()}`,
       images: images || []
     });
 
@@ -242,6 +244,7 @@ const updateProduct = async (req, res) => {
       "description",
       "category",
       "brand",
+      "sku",
       "price",
       "stock",
       "images",
@@ -469,12 +472,55 @@ const getPublicProductById = async (req, res) => {
   }
 };
 
+// ========================================
+// 8. DIRECT STOCK / INVENTORY UPDATE
+// ========================================
+const updateProductStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stock } = req.body;
+
+    if (!isValidId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid product ID" });
+    }
+
+    const numStock = Number(stock);
+    if (!Number.isInteger(numStock) || numStock < 0) {
+      return res.status(400).json({ success: false, message: "Stock must be a non-negative integer" });
+    }
+
+    const vendor = await getCurrentVendor(req.user._id);
+    if (!vendor) {
+      return res.status(403).json({ success: false, message: "Approved vendor profile not found" });
+    }
+
+    const product = await Product.findOne({ _id: id, vendorId: vendor._id });
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found or unauthorized" });
+    }
+
+    product.stock = numStock;
+    await product.save();
+
+    indexProduct(product).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: "Stock updated successfully",
+      stock: product.stock
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to update stock" });
+  }
+};
+
 module.exports = {
   createProduct,
   getVendorProducts,
   getVendorProductById,
   updateProduct,
   deleteProduct,
+  updateProductStock,
   getAllProducts,
   getPublicProductById
 };

@@ -32,11 +32,18 @@ const vendorSchema = new mongoose.Schema(
       required: [true, "Store address is required"],
       trim: true
     },
+    logo: {
+      type: String,
+      default: "https://images.unsplash.com/photo-1572021335469-31706a17aaef?w=400"
+    },
+    banner: {
+      type: String,
+      default: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200"
+    },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "pending",
-      index: true
+      enum: ["pending", "approved", "rejected", "suspended"],
+      default: "pending"
     },
     commissionRate: {
       type: Number,
@@ -62,6 +69,8 @@ const vendorSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+vendorSchema.index({ status: 1 });
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
 

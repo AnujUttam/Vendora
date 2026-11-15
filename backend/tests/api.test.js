@@ -158,7 +158,58 @@ const runTests = async () => {
     assert.strictEqual(res.status, 401);
   });
 
-  // 4. Multi-Vendor Split Payment & Commission Calculation Engine
+  await test("GET /api/wishlist returns 401 without Bearer token", async () => {
+    const res = await dispatch("GET", "/api/wishlist");
+    assert.strictEqual(res.status, 401);
+  });
+
+  await test("GET /api/auth/addresses returns 401 without Bearer token", async () => {
+    const res = await dispatch("GET", "/api/auth/addresses");
+    assert.strictEqual(res.status, 401);
+  });
+
+  await test("GET /api/notifications returns 401 without Bearer token", async () => {
+    const res = await dispatch("GET", "/api/notifications");
+    assert.strictEqual(res.status, 401);
+  });
+
+  await test("GET /api/payments/my-payments returns 401 without Bearer token", async () => {
+    const res = await dispatch("GET", "/api/payments/my-payments");
+    assert.strictEqual(res.status, 401);
+  });
+
+  await test("GET /api/vendor/profile returns 401 without Bearer token", async () => {
+    const res = await dispatch("GET", "/api/vendor/profile");
+    assert.strictEqual(res.status, 401);
+  });
+
+  await test("POST /api/categories returns 401 without Admin privileges", async () => {
+    const res = await dispatch("POST", "/api/categories", { name: "Test Cat" });
+    assert.strictEqual(res.status, 401);
+  });
+
+  // 4. Public Endpoints & Edge Cases
+  await test("GET /api/categories returns 200 and categories array", async () => {
+    const res = await dispatch("GET", "/api/categories");
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.success, true);
+    assert.ok(Array.isArray(res.body.categories));
+    assert.ok(res.body.categories.length > 0);
+  });
+
+  await test("GET /api/vendor/store/:id returns 404 for invalid vendor id", async () => {
+    const res = await dispatch("GET", "/api/vendor/store/invalid-id");
+    assert.strictEqual(res.status, 404);
+    assert.strictEqual(res.body.success, false);
+  });
+
+  await test("POST /api/payments/webhook returns 400 when signature missing", async () => {
+    const res = await dispatch("POST", "/api/payments/webhook", { event: "payment.captured" });
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.success, false);
+  });
+
+  // 5. Multi-Vendor Split Payment & Commission Calculation Engine
   await test("Commission engine accurately calculates vendor payouts and platform fee", async () => {
     const mockVendorId1 = "650000000000000000000001";
     const mockVendorId2 = "650000000000000000000002";

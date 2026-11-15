@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
+    avatar: {
+      type: String,
+      default: ""
+    },
     address: {
       street: { type: String, default: "" },
       city: { type: String, default: "" },
@@ -49,6 +53,8 @@ const userSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+userSchema.index({ role: 1 });
 
 const User = mongoose.model("User", userSchema);
 

@@ -253,6 +253,59 @@ body {
   object-fit: contain;
 }
 
+.shadow-xs {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.hover-white:hover {
+  color: #ffffff !important;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.text-primary {
+  color: #2563eb !important;
+}
+
+.bg-primary {
+  background-color: #2563eb !important;
+}
+
+.bg-primary-subtle {
+  background-color: #eff6ff !important;
+}
+
+.border-primary {
+  border-color: #2563eb !important;
+}
+
+.btn-outline-primary {
+  color: #2563eb;
+  border-color: #2563eb;
+}
+
+.btn-outline-primary:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
 @media (max-width: 991px) {
   .search-box {
     width: 100%;

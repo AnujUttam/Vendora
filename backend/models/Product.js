@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
@@ -38,6 +37,12 @@ const productSchema = new mongoose.Schema(
       default: "Unbranded"
     },
 
+    sku: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
     price: {
       type: Number,
       required: true,
@@ -62,7 +67,8 @@ const productSchema = new mongoose.Schema(
 
     isActive: {
       type: Boolean,
-      default: true
+      default: true,
+      index: true
     },
 
     averageRating: {
@@ -86,7 +92,8 @@ const productSchema = new mongoose.Schema(
 productSchema.index({
   name: "text",
   description: "text",
-  brand: "text"
+  brand: "text",
+  category: "text"
 });
 
 const Product = mongoose.model("Product", productSchema);

@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Address = require("../models/Address");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
@@ -162,7 +163,7 @@ const login = async (req, res) => {
 // Update Profile
 const updateProfile = async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, address, avatar } = req.body;
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -171,6 +172,7 @@ const updateProfile = async (req, res) => {
 
     if (name) user.name = name.trim();
     if (phone !== undefined) user.phone = phone.trim();
+    if (avatar !== undefined) user.avatar = avatar;
     if (address) user.address = { ...user.address, ...address };
 
     await user.save();
@@ -185,6 +187,7 @@ const updateProfile = async (req, res) => {
         role: user.role,
         isApproved: user.isApproved,
         phone: user.phone,
+        avatar: user.avatar,
         address: user.address
       }
     });
@@ -193,8 +196,106 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Address Management
+const getAddresses = async (req, res) => {
+  try {
+    const addresses = await Address.find({ userId: req.user._id }).sort({ isDefault: -1, createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: addresses.length,
+      addresses
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch addresses" });
+  }
+};
+
+const addAddress = async (req, res) => {
+  try {
+    const { fullName, phone, street, city, state, postalCode, country, isDefault } = req.body;
+
+    if (!fullName || !phone || !street || !city || !state || !postalCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Full name, phone, street, city, state, and postal code are required"
+      });
+    }
+
+    if (isDefault) {
+      await Address.updateMany({ userId: req.user._id }, { isDefault: false });
+    }
+
+    const address = await Address.create({
+      userId: req.user._id,
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      street: street.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      postalCode: postalCode.trim(),
+      country: country ? country.trim() : "India",
+      isDefault: Boolean(isDefault)
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Address added successfully",
+      address
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to add address" });
+  }
+};
+
+const deleteAddress = async (req, res) => {
+  try {
+    const address = await Address.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+
+    if (!address) {
+      return res.status(404).json({ success: false, message: "Address not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Address removed successfully"
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to remove address" });
+  }
+};
+
+const setDefaultAddress = async (req, res) => {
+  try {
+    await Address.updateMany({ userId: req.user._id }, { isDefault: false });
+    const address = await Address.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      { isDefault: true },
+      { new: true }
+    );
+
+    if (!address) {
+      return res.status(404).json({ success: false, message: "Address not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Default address updated",
+      address
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to set default address" });
+  }
+};
+
 module.exports = {
   register,
   login,
-  updateProfile
+  updateProfile,
+  getAddresses,
+  addAddress,
+  deleteAddress,
+  setDefaultAddress
 };

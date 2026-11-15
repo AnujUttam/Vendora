@@ -3,9 +3,11 @@ const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Coupon = require("../models/Coupon");
+const Category = require("../models/Category");
+const { deleteProductFromES } = require("../services/elasticsearchService");
 
 // ==========================================
-// VENDOR APPLICATION MANAGEMENT
+// VENDOR APPLICATION & MANAGEMENT
 // ==========================================
 
 // Get all vendor applications
@@ -15,7 +17,7 @@ const getVendorApplications = async (req, res) => {
     const filter = {};
 
     if (status) {
-      if (!["pending", "approved", "rejected"].includes(status)) {
+      if (!["pending", "approved", "rejected", "suspended"].includes(status)) {
         return res.status(400).json({
           success: false,
           message: "Invalid application status"
@@ -128,6 +130,33 @@ const rejectVendor = async (req, res) => {
   }
 };
 
+// Suspend or Reactivate Vendor
+const toggleVendorStatus = async (req, res) => {
+  try {
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
+
+    const newStatus = vendor.status === "suspended" ? "approved" : "suspended";
+    vendor.status = newStatus;
+    await vendor.save();
+
+    // Sync user approval state
+    await User.findByIdAndUpdate(vendor.userId, {
+      isApproved: newStatus === "approved"
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Vendor account ${newStatus === "suspended" ? "suspended" : "reactivated"} successfully`,
+      vendor
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to toggle vendor status" });
+  }
+};
+
 // ==========================================
 // PLATFORM ANALYTICS
 // ==========================================
@@ -174,7 +203,7 @@ const getPlatformAnalytics = async (req, res) => {
 
     totalVendorPayout = Math.max(0, totalGMV - totalPlatformCommission);
 
-    // Recent 5 orders
+    // Recent orders
     const recentOrders = await Order.find()
       .populate("customer", "name email")
       .sort({ createdAt: -1 })
@@ -223,7 +252,18 @@ const getPlatformAnalytics = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const { search, role } = req.query;
+    const filter = {};
+
+    if (role) filter.role = role;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const users = await User.find(filter).select("-password").sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: users.length,
@@ -253,13 +293,89 @@ const toggleUserStatus = async (req, res) => {
 };
 
 // ==========================================
+// PRODUCT MODERATION (ADMIN)
+// ==========================================
+
+const getAllProductsAdmin = async (req, res) => {
+  try {
+    const { search, category, status } = req.query;
+    const filter = {};
+
+    if (category) filter.category = category;
+    if (status === "active") filter.isActive = true;
+    if (status === "inactive") filter.isActive = false;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { brand: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const products = await Product.find(filter)
+      .populate("vendorId", "storeName phone")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Unable to fetch products" });
+  }
+};
+
+const toggleProductStatus = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    product.isActive = !product.isActive;
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Product ${product.isActive ? "activated" : "deactivated"} successfully`,
+      product
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Unable to toggle product status" });
+  }
+};
+
+const deleteProductAdmin = async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found" });
+    }
+
+    deleteProductFromES(req.params.id).catch(() => {});
+
+    res.status(200).json({
+      success: true,
+      message: "Product removed from marketplace successfully"
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Unable to delete product" });
+  }
+};
+
+// ==========================================
 // ALL ORDERS (ADMIN VIEW)
 // ==========================================
 
 const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate("customer", "name email")
+    const { status, paymentStatus } = req.query;
+    const filter = {};
+    if (status) filter.orderStatus = status;
+    if (paymentStatus) filter.paymentStatus = paymentStatus;
+
+    const orders = await Order.find(filter)
+      .populate("customer", "name email phone")
       .populate("items.vendorId", "storeName")
       .sort({ createdAt: -1 });
 
@@ -273,12 +389,71 @@ const getAllOrders = async (req, res) => {
   }
 };
 
+// ==========================================
+// COMMISSION & PAYOUT LEDGER
+// ==========================================
+
+const getCommissionLedger = async (req, res) => {
+  try {
+    const vendors = await Vendor.find({ status: "approved" }).select("storeName commissionRate phone");
+    const orders = await Order.find({ paymentStatus: "paid" });
+
+    const vendorLedgerMap = new Map();
+
+    vendors.forEach((v) => {
+      vendorLedgerMap.set(v._id.toString(), {
+        vendorId: v._id,
+        storeName: v.storeName,
+        commissionRate: v.commissionRate,
+        grossSales: 0,
+        platformCommission: 0,
+        netVendorPayout: 0,
+        ordersCount: 0
+      });
+    });
+
+    orders.forEach((ord) => {
+      if (ord.vendorPayouts && ord.vendorPayouts.length > 0) {
+        ord.vendorPayouts.forEach((vp) => {
+          const vKey = vp.vendorId ? vp.vendorId.toString() : null;
+          if (vKey && vendorLedgerMap.has(vKey)) {
+            const entry = vendorLedgerMap.get(vKey);
+            entry.grossSales += (vp.amount || 0) + (vp.commission || 0);
+            entry.platformCommission += vp.commission || 0;
+            entry.netVendorPayout += vp.amount || 0;
+            entry.ordersCount++;
+          }
+        });
+      }
+    });
+
+    const ledger = Array.from(vendorLedgerMap.values()).map((row) => ({
+      ...row,
+      grossSales: Math.round(row.grossSales * 100) / 100,
+      platformCommission: Math.round(row.platformCommission * 100) / 100,
+      netVendorPayout: Math.round(row.netVendorPayout * 100) / 100
+    }));
+
+    res.status(200).json({
+      success: true,
+      ledger
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to generate commission ledger" });
+  }
+};
+
 module.exports = {
   getVendorApplications,
   approveVendor,
   rejectVendor,
+  toggleVendorStatus,
   getPlatformAnalytics,
   getAllUsers,
   toggleUserStatus,
-  getAllOrders
+  getAllProductsAdmin,
+  toggleProductStatus,
+  deleteProductAdmin,
+  getAllOrders,
+  getCommissionLedger
 };
